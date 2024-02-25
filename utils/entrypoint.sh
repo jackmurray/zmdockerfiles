@@ -410,7 +410,15 @@ else
 
     mysql -u root -e "CREATE USER 'zmuser'@'localhost' IDENTIFIED BY 'zmpass';"
     mysql -u root -e "GRANT ALL PRIVILEGES ON *.* TO 'zmuser'@'localhost';"
-    mysql -u root -e "ALTER USER 'zmuser'@'localhost' IDENTIFIED WITH mysql_native_password BY 'zmpass';"
+
+    # Copy the auto-generated CA and client credentials to a location that www-data can access.
+    # /var/www is www-data's home directory, but is NOT exposed via apache so this is a safe place to put them.
+    cp /var/lib/mysql/ca.pem /var/www/
+    cp /var/lib/mysql/client-*.pem /var/www/
+    chmod 0755 /var/www/*.pem
+    sed -i -e "s/ZM_DB_SSL_CA_CERT=.*$/ZM_DB_SSL_CA_CERT=\/var\/www\/ca.pem/g" $ZMCONF
+    sed -i -e "s/ZM_DB_SSL_CLIENT_KEY=.*$/ZM_DB_SSL_CLIENT_KEY=\/var\/www\/client-key.pem/g" $ZMCONF
+    sed -i -e "s/ZM_DB_SSL_CLIENT_CERT=.*$/ZM_DB_SSL_CLIENT_CERT=\/var\/www\/client-cert.pem/g" $ZMCONF
 
     if [ "$(zm_db_exists)" -eq "0" ]; then
         echo " * First run of mysql in the container, creating ZoneMinder dB."
